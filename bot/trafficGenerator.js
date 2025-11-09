@@ -4,12 +4,53 @@ const UserAgents = require('user-agents');
 
 puppeteer.use(StealthPlugin());
 
+// Di trafficGenerator.js - tambahkan di constructor
+const ProxyHandler = require('./proxyHandler');
+
 class TrafficGenerator {
     constructor() {
         this.activeSessions = new Map();
         this.sessionLogs = new Map();
-        this.isRunning = false;
+        this.proxyHandler = new ProxyHandler(); // ← Init proxy handler
+        
+        // Load proxies saat aplikasi start
+        this.proxyHandler.loadFreeProxies();
     }
+
+    async launchBrowser(config) {
+        const args = [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu',
+        ];
+
+        // Gunakan proxy gratis jika tersedia
+        let proxyUrl = null;
+        if (config.useFreeProxy) {
+            proxyUrl = this.proxyHandler.getRandomProxy();
+            if (proxyUrl) {
+                args.push(`--proxy-server=${proxyUrl}`);
+                console.log(`🌐 Menggunakan proxy gratis: ${proxyUrl}`);
+            }
+        }
+
+        // Jika ada proxy manual, prioritaskan
+        if (config.proxyList && config.proxyList.length > 0) {
+            const randomProxy = config.proxyList[Math.floor(Math.random() * config.proxyList.length)];
+            args.push(`--proxy-server=${randomProxy}`);
+        }
+
+        return await puppeteer.launch({
+            headless: true,
+            args: args,
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
+        });
+    }
+                    }
 
     async testPuppeteer() {
         let browser;
