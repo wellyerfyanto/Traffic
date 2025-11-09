@@ -1,19 +1,6 @@
-class ProxyHandler {
-    constructor() {
-        this.proxyList = [];
-    }
-
-    addProxy(proxyString) {
-        // Parse proxy format: username:password@host:port
-        const proxyData = this.parseProxy(proxyString);
-        this.proxyList.push(proxyData);
-    }
-
-    getRandomProxy() {
-        return this.proxyList[Math.floor(Math.random() * this.proxyList.length)];
-    }
-    // bot/proxyHandler.js
+// bot/proxyHandler.js
 const FreeProxy = require('free-proxy');
+const { HttpsProxyAgent } = require('https-proxy-agent');
 
 class ProxyHandler {
     constructor() {
@@ -21,24 +8,37 @@ class ProxyHandler {
         this.freeProxy = new FreeProxy();
     }
 
-    // Method untuk mendapatkan proxy gratis
+    // Method untuk mengambil proxy gratis otomatis
     async loadFreeProxies() {
         try {
             console.log('🔄 Mengambil daftar proxy gratis...');
             
-            // Ambil proxy dengan filter (opsional)
+            // Ambil beberapa proxy sekaligus
             const proxies = await this.freeProxy.getProxies({
-                country: 'US',      // Filter negara
-                protocol: 'http',   // Protocol
-                limit: 50           // Jumlah proxy
+                country: 'US',
+                protocol: 'http',
+                limit: 10
             });
             
             this.proxyList = proxies.map(proxy => `${proxy.ip}:${proxy.port}`);
             console.log(`✅ Berhasil mengambil ${this.proxyList.length} proxy gratis`);
             
+            return this.proxyList;
         } catch (error) {
             console.error('❌ Gagal mengambil proxy gratis:', error.message);
+            return [];
         }
+    }
+
+    // Method untuk proxy manual (format: ip:port)
+    addManualProxy(proxyString) {
+        if (proxyString && proxyString.includes(':')) {
+            this.proxyList.push(proxyString.trim());
+            console.log(`✅ Proxy manual ditambahkan: ${proxyString}`);
+            return true;
+        }
+        console.error('❌ Format proxy salah. Gunakan format: ip:port');
+        return false;
     }
 
     // Method untuk mendapatkan proxy random
@@ -47,33 +47,38 @@ class ProxyHandler {
             return null;
         }
         const randomProxy = this.proxyList[Math.floor(Math.random() * this.proxyList.length)];
-        return `http://${randomProxy}`;
+        return {
+            url: `http://${randomProxy}`,
+            agent: new HttpsProxyAgent(`http://${randomProxy}`)
+        };
     }
 
     // Method untuk test proxy
     async testProxy(proxyUrl) {
         try {
             const response = await fetch('https://httpbin.org/ip', {
-                method: 'GET',
-                agent: new (require('https-proxy-agent'))(proxyUrl),
+                agent: new HttpsProxyAgent(proxyUrl),
                 timeout: 10000
             });
-            return response.ok;
+            const data = await response.json();
+            console.log(`✅ Proxy berfungsi! IP: ${data.origin}`);
+            return true;
         } catch (error) {
+            console.error(`❌ Proxy tidak berfungsi: ${error.message}`);
             return false;
         }
+    }
+
+    // Method untuk mendapatkan semua proxy
+    getAllProxies() {
+        return this.proxyList;
+    }
+
+    // Method untuk clear semua proxy
+    clearProxies() {
+        this.proxyList = [];
+        console.log('🧹 Semua proxy telah dihapus');
     }
 }
 
 module.exports = ProxyHandler;
-
-    async testProxy(proxy) {
-        // Test proxy connectivity
-        try {
-            // Implementation untuk test proxy
-            return { working: true, speed: 100 };
-        } catch (error) {
-            return { working: false, error: error.message };
-        }
-    }
-}
