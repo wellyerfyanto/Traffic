@@ -1,0 +1,12 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "node server.js"
+
+[build.environment]
+NODE_ENV = "production"
+
+[deploy.environment]
+NODE_ENV = "production"
+PORT = "3000"
