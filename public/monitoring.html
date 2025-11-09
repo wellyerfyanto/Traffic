@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Traffic Bot - Monitoring</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Monitoring Session</h1>
+            <p>Real-time monitoring untuk semua active sessions</p>
+            <div class="header-actions">
+                <button onclick="goToConfig()">⚙️ Configuration</button>
+                <button onclick="clearAllSessions()">🗑️ Clear All Sessions</button>
+                <button onclick="stopAllSessions()">⏹️ Stop All Sessions</button>
+            </div>
+        </header>
+
+        <div class="sessions-overview">
+            <h2>📈 Overview Sessions</h2>
+            <div id="sessionsSummary" class="summary-cards">
+                <!-- Summary cards akan diisi oleh JavaScript -->
+            </div>
+        </div>
+
+        <div class="sessions-list">
+            <h2>🔄 Active Sessions</h2>
+            <div id="sessionsContainer">
+                <!-- Session list akan diisi oleh JavaScript -->
+            </div>
+        </div>
+
+        <div class="logs-section">
+            <h2>📝 Real-time Logs</h2>
+            <div class="log-controls">
+                <select id="sessionSelector">
+                    <option value="">Pilih session untuk melihat logs...</option>
+                </select>
+                <button onclick="refreshLogs()">🔄 Refresh</button>
+                <button onclick="clearLogs()">🧹 Clear Logs</button>
+            </div>
+            <div class="log-container" id="logContainer">
+                <p>Pilih session untuk melihat logs real-time...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="monitoring.js"></script>
+</body>
+</html>
