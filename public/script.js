@@ -1,4 +1,4 @@
-// Configuration page JavaScript
+// public/script.js - Frontend Logic Lengkap dengan Auto-loop
 document.addEventListener('DOMContentLoaded', function() {
     loadSystemStatus();
     
@@ -20,7 +20,8 @@ async function startSessions() {
             targetUrl: document.getElementById('targetUrl').value,
             profiles: document.getElementById('profiles').value,
             deviceType: document.getElementById('deviceType').value,
-            proxies: document.getElementById('proxies').value
+            proxies: document.getElementById('proxies').value,
+            autoLoop: document.getElementById('autoLoop').checked
         };
 
         const response = await fetch('/api/start-session', {
@@ -46,6 +47,82 @@ async function startSessions() {
     } finally {
         startBtn.disabled = false;
         startBtn.textContent = originalText;
+    }
+}
+
+// Auto-loop functions
+async function startAutoLoop() {
+    try {
+        const config = {
+            interval: parseInt(document.getElementById('loopInterval').value) * 60 * 1000,
+            maxSessions: parseInt(document.getElementById('maxSessions').value),
+            targetUrl: document.getElementById('targetUrl').value || 'https://github.com'
+        };
+
+        const response = await fetch('/api/auto-loop/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(config)
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('autoLoopStatus').innerHTML = 
+                `<div style="color: #27ae60;">
+                    ✅ ${result.message}<br>
+                    ⏰ Interval: ${config.interval/60000} menit<br>
+                    📊 Max Sessions: ${config.maxSessions}
+                </div>`;
+        } else {
+            alert('❌ ' + result.error);
+        }
+    } catch (error) {
+        alert('❌ Network error: ' + error.message);
+    }
+}
+
+async function stopAutoLoop() {
+    try {
+        const response = await fetch('/api/auto-loop/stop', {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('autoLoopStatus').innerHTML = 
+                `<div style="color: #e74c3c;">⏹️ ${result.message}</div>`;
+        } else {
+            alert('❌ ' + result.error);
+        }
+    } catch (error) {
+        alert('❌ Network error: ' + error.message);
+    }
+}
+
+async function checkAutoLoopStatus() {
+    try {
+        const response = await fetch('/api/auto-loop/status');
+        const result = await response.json();
+
+        const statusDiv = document.getElementById('autoLoopStatus');
+        if (result.success) {
+            statusDiv.innerHTML = `
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    <strong>Auto-Loop Status:</strong><br>
+                    🔄 Status: ${result.config.enabled ? '🟢 RUNNING' : '🔴 STOPPED'}<br>
+                    ⏰ Interval: ${result.config.interval/60000} menit<br>
+                    📊 Max Sessions: ${result.config.maxSessions}<br>
+                    🎯 Active Sessions: ${result.activeSessions}/${result.config.maxSessions}<br>
+                    🌐 Target: ${result.config.targetUrl}
+                </div>
+            `;
+        }
+    } catch (error) {
+        alert('❌ Network error: ' + error.message);
     }
 }
 
@@ -96,15 +173,27 @@ async function loadSystemStatus() {
         `;
     }
 }
-// Di public/script.js - update form data
-const formData = {
-    targetUrl: document.getElementById('targetUrl').value,
-    profiles: document.getElementById('profiles').value,
-    deviceType: document.getElementById('deviceType').value,
-    proxies: document.getElementById('proxies').value,
-    useFreeProxy: document.getElementById('useFreeProxy').checked // ← Tambah ini
-};
 
 function goToMonitoring() {
     window.location.href = '/monitoring';
-                  }
+}
+
+function clearSessions() {
+    if (confirm('Are you sure you want to stop ALL sessions and clear logs?')) {
+        fetch('/api/clear-sessions', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('All sessions cleared!');
+                loadSystemStatus();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        })
+        .catch(error => {
+            alert('Network error: ' + error.message);
+        });
+    }
+                        }
