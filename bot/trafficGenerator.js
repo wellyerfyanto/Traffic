@@ -2,8 +2,6 @@ const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const UserAgents = require('user-agents');
 const ProxyHandler = require('./proxyHandler');
-const maxRetries = 3;
-let retryCount = 0;
 
 puppeteer.use(StealthPlugin());
 
@@ -12,7 +10,7 @@ class TrafficGenerator {
     this.activeSessions = new Map();
     this.sessionLogs = new Map();
     this.proxyHandler = new ProxyHandler();
-    this.isRunning = false;
+    this.autoRestartEnabled = true;
   }
 
   async testPuppeteer() {
@@ -84,56 +82,71 @@ class TrafficGenerator {
       config: config,
       status: 'running',
       startTime: new Date(),
-      currentStep: 0
+      currentStep: 0,
+      isAutoLoop: config.isAutoLoop || false,
+      restartCount: 0,
+      maxRestarts: config.maxRestarts || 3
     });
 
-    this.log(sessionId, 'SESSION_STARTED', `Session started with ${config.profileCount} profiles targeting: ${config.targetUrl}`);
+    this.log(sessionId, 'SESSION_STARTED', 
+      `Session started with ${config.profileCount} profiles targeting: ${config.targetUrl}` +
+      (config.isAutoLoop ? ' [AUTO-LOOP]' : '')
+    );
     
-    // Execute session in background with better error handling
-    this.executeSessionWithRetry(sessionId, config).catch(error => {
-      this.log(sessionId, 'SESSION_ERROR', `Session failed: ${error.message}`);
-      this.stopSession(sessionId);
-    });
+    // Execute session with auto-restart capability
+    this.executeSessionWithAutoRestart(sessionId, config);
 
     return sessionId;
   }
 
-  async executeSessionWithRetry(sessionId, config, retryCount = 0) {
-    const maxRetries = 1; // Only retry once
+  async executeSessionWithAutoRestart(sessionId, config) {
+    const session = this.activeSessions.get(sessionId);
     
     try {
       await this.executeSession(sessionId, config);
-    } catch (error) {
-      if (retryCount < maxRetries && this.shouldRetry(error)) {
-        this.log(sessionId, 'RETRY_ATTEMPT', `Retrying session... (${retryCount + 1}/${maxRetries})`);
+      
+      // Session completed successfully
+      this.log(sessionId, 'SESSION_COMPLETED', 'All steps completed successfully');
+      
+      // Auto-restart if enabled and it's an auto-loop session
+      if (this.autoRestartEnabled && session.isAutoLoop && session.restartCount < session.maxRestarts) {
+        session.restartCount++;
+        this.log(sessionId, 'AUTO_RESTART', 
+          `Restarting session (${session.restartCount}/${session.maxRestarts}) after 30 seconds...`);
         
-        // Remove problematic proxy if that was the issue
-        const newConfig = { ...config };
-        if (error.message.includes('proxy') || error.message.includes('ECONNREFUSED')) {
-          newConfig.proxyList = [];
-          this.log(sessionId, 'PROXY_REMOVED', 'Removing proxies due to connection issues');
-        }
+        // Wait before restarting
+        setTimeout(() => {
+          if (this.activeSessions.has(sessionId) && this.activeSessions.get(sessionId).status === 'running') {
+            this.log(sessionId, 'RESTARTING', 'Starting new iteration...');
+            this.executeSessionWithAutoRestart(sessionId, config);
+          }
+        }, 30000); // 30 second delay between restarts
         
-        await this.executeSessionWithRetry(sessionId, newConfig, retryCount + 1);
       } else {
-        this.log(sessionId, 'SESSION_FAILED', `Session failed after ${retryCount + 1} attempts: ${error.message}`);
+        this.stopSession(sessionId);
+      }
+      
+    } catch (error) {
+      this.log(sessionId, 'SESSION_FAILED', `Session failed: ${error.message}`);
+      
+      // Auto-restart on failure for auto-loop sessions
+      if (this.autoRestartEnabled && session.isAutoLoop && session.restartCount < session.maxRestarts) {
+        session.restartCount++;
+        this.log(sessionId, 'AUTO_RESTART_ON_ERROR', 
+          `Restarting after error (${session.restartCount}/${session.maxRestarts}) in 60 seconds...`);
+        
+        // Longer delay on error
+        setTimeout(() => {
+          if (this.activeSessions.has(sessionId) && this.activeSessions.get(sessionId).status === 'running') {
+            this.log(sessionId, 'RESTARTING_AFTER_ERROR', 'Starting new iteration after error...');
+            this.executeSessionWithAutoRestart(sessionId, config);
+          }
+        }, 60000); // 60 second delay on error
+        
+      } else {
         this.stopSession(sessionId);
       }
     }
-  }
-
-  shouldRetry(error) {
-    const retryableErrors = [
-      'proxy',
-      'ECONNREFUSED', 
-      'timeout',
-      'navigation',
-      'NETWORK'
-    ];
-    
-    return retryableErrors.some(keyword => 
-      error.message.toLowerCase().includes(keyword.toLowerCase())
-    );
   }
 
   async executeSession(sessionId, config) {
@@ -186,7 +199,6 @@ class TrafficGenerator {
       await this.executeAllSteps(page, sessionId);
 
       this.log(sessionId, 'SESSION_COMPLETED', 'All steps completed successfully');
-      this.stopSession(sessionId);
 
     } catch (error) {
       this.log(sessionId, 'EXECUTION_ERROR', `Error during session execution: ${error.message}`);
@@ -348,7 +360,7 @@ class TrafficGenerator {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
     
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(1000);
   }
 
   async clickRandomLink(page) {
@@ -410,7 +422,7 @@ class TrafficGenerator {
           const element = await page.$(selector);
           if (element) {
             await element.click();
-            await page.waitForTimeout(2000);
+            await page.waitForTimeout(1000);
             return true;
           }
         } catch (e) {
@@ -451,7 +463,7 @@ class TrafficGenerator {
       // Fallback: go to root URL
       await page.goto(new URL('/', page.url()).href, { 
         waitUntil: 'networkidle2',
-        timeout: 60000 
+        timeout: 20000 
       });
       return true;
       
@@ -513,7 +525,10 @@ class TrafficGenerator {
         status: session.status,
         startTime: session.startTime,
         currentStep: session.currentStep,
-        config: session.config
+        config: session.config,
+        isAutoLoop: session.isAutoLoop,
+        restartCount: session.restartCount,
+        maxRestarts: session.maxRestarts
       });
     }
     return sessions;
@@ -537,6 +552,11 @@ class TrafficGenerator {
     this.activeSessions.clear();
     this.sessionLogs.clear();
     this.log('SYSTEM', 'ALL_SESSIONS_CLEARED', 'All sessions and logs cleared');
+  }
+
+  setAutoRestart(enabled) {
+    this.autoRestartEnabled = enabled;
+    console.log(`🔄 Auto-restart ${enabled ? 'ENABLED' : 'DISABLED'}`);
   }
 }
 
