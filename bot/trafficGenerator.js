@@ -1,56 +1,17 @@
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const UserAgents = require('user-agents');
+const ProxyHandler = require('./proxyHandler');
 
 puppeteer.use(StealthPlugin());
-
-// Di trafficGenerator.js - tambahkan di constructor
-const ProxyHandler = require('./proxyHandler');
 
 class TrafficGenerator {
     constructor() {
         this.activeSessions = new Map();
         this.sessionLogs = new Map();
-        this.proxyHandler = new ProxyHandler(); // ← Init proxy handler
-        
-        // Load proxies saat aplikasi start
-        this.proxyHandler.loadFreeProxies();
+        this.proxyHandler = new ProxyHandler();
+        this.isRunning = false;
     }
-
-    async launchBrowser(config) {
-        const args = [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu',
-        ];
-
-        // Gunakan proxy gratis jika tersedia
-        let proxyUrl = null;
-        if (config.useFreeProxy) {
-            proxyUrl = this.proxyHandler.getRandomProxy();
-            if (proxyUrl) {
-                args.push(`--proxy-server=${proxyUrl}`);
-                console.log(`🌐 Menggunakan proxy gratis: ${proxyUrl}`);
-            }
-        }
-
-        // Jika ada proxy manual, prioritaskan
-        if (config.proxyList && config.proxyList.length > 0) {
-            const randomProxy = config.proxyList[Math.floor(Math.random() * config.proxyList.length)];
-            args.push(`--proxy-server=${randomProxy}`);
-        }
-
-        return await puppeteer.launch({
-            headless: true,
-            args: args,
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
-        });
-    }
-                    }
 
     async testPuppeteer() {
         let browser;
@@ -70,7 +31,7 @@ class TrafficGenerator {
             });
             
             const page = await browser.newPage();
-            await page.goto('https://httpbin.org/user-agent', { waitUntil: 'networkidle2' });
+            await page.goto('https://httpbin.org/ip', { waitUntil: 'networkidle2' });
             const content = await page.content();
             
             return { 
@@ -88,6 +49,11 @@ class TrafficGenerator {
     async startNewSession(config) {
         const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         
+        // Tambahkan proxy manual ke handler jika ada
+        if (config.proxyList && config.proxyList.length > 0) {
+            this.proxyHandler.addMultipleProxies(config.proxyList);
+        }
+
         this.sessionLogs.set(sessionId, []);
         this.activeSessions.set(sessionId, {
             id: sessionId,
@@ -97,7 +63,7 @@ class TrafficGenerator {
             currentStep: 0
         });
 
-        this.log(sessionId, 'SESSION_STARTED', `Session started with ${config.profileCount} profiles`);
+        this.log(sessionId, 'SESSION_STARTED', `Session started dengan ${config.profileCount} profiles`);
         
         // Execute session in background
         this.executeSession(sessionId, config).catch(error => {
@@ -200,10 +166,11 @@ class TrafficGenerator {
             '--lang=en-US,en;q=0.9',
         ];
 
-        // Add proxy if available
+        // Add proxy jika tersedia
         if (config.proxyList && config.proxyList.length > 0) {
             const randomProxy = config.proxyList[Math.floor(Math.random() * config.proxyList.length)];
             args.push(`--proxy-server=${randomProxy}`);
+            this.log('PROXY_INFO', `Menggunakan proxy: ${randomProxy}`);
         }
 
         return await puppeteer.launch({
@@ -251,12 +218,12 @@ class TrafficGenerator {
             if (links.length > 0) {
                 const randomLink = links[Math.floor(Math.random() * links.length)];
                 await page.click(`a[href="${randomLink.href}"]`);
-                await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 });
+                await page.waitForTimeout(2000);
                 return true;
             }
             return false;
         } catch (error) {
-            this.log('WARNING', `Tidak bisa klik link: ${error.message}`);
+            console.log('Tidak bisa klik link:', error.message);
             return false;
         }
     }
@@ -273,9 +240,11 @@ class TrafficGenerator {
             
             for (const selector of skipSelectors) {
                 try {
-                    await page.waitForSelector(selector, { timeout: 3000 });
-                    await page.click(selector);
-                    return true;
+                    const element = await page.$(selector);
+                    if (element) {
+                        await element.click();
+                        return true;
+                    }
                 } catch (e) {
                     // Continue to next selector
                 }
@@ -299,9 +268,12 @@ class TrafficGenerator {
             
             for (const selector of homeSelectors) {
                 try {
-                    await page.click(selector);
-                    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 5000 });
-                    return true;
+                    const element = await page.$(selector);
+                    if (element) {
+                        await element.click();
+                        await page.waitForTimeout(2000);
+                        return true;
+                    }
                 } catch (e) {
                     // Continue to next selector
                 }
@@ -316,8 +288,10 @@ class TrafficGenerator {
         try {
             const pages = await browser.pages();
             for (const page of pages) {
-                const client = await page.target().createCDPSession();
-                await client.send('Network.clearBrowserCache');
+                await page.evaluate(() => {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                });
             }
         } catch (error) {
             // Ignore cache clearing errors
