@@ -2,7 +2,22 @@ const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const UserAgents = require('user-agents');
 const ProxyHandler = require('./proxyHandler');
+const maxRetries = 3;
+let retryCount = 0;
 
+while (retryCount < maxRetries) {
+    try {
+        await page.goto(config.targetUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+        break; // Success, exit the loop
+    } catch (error) {
+        retryCount++;
+        console.log(`Navigation attempt ${retryCount} failed: ${error.message}`);
+        if (retryCount === maxRetries) {
+            throw error; // If all retries fail, throw the error
+        }
+        await page.waitForTimeout(2000); // Wait before retrying
+    }
+                        }
 puppeteer.use(StealthPlugin());
 
 class TrafficGenerator {
@@ -346,7 +361,7 @@ class TrafficGenerator {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
     
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
   }
 
   async clickRandomLink(page) {
@@ -408,7 +423,7 @@ class TrafficGenerator {
           const element = await page.$(selector);
           if (element) {
             await element.click();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(2000);
             return true;
           }
         } catch (e) {
@@ -449,7 +464,7 @@ class TrafficGenerator {
       // Fallback: go to root URL
       await page.goto(new URL('/', page.url()).href, { 
         waitUntil: 'networkidle2',
-        timeout: 10000 
+        timeout: 60000 
       });
       return true;
       
