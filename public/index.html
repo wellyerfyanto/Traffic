@@ -9,7 +9,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>🚀 GitHub Traffic Bot</h1>
+            <h1>🚀 Traffic Bot By Erimo Hack</h1>
             <p>Automated traffic generator untuk repository GitHub</p>
         </header>
 
@@ -58,6 +58,38 @@
                 </div>
             </form>
         </div>
+        <!-- Tambahkan section ini setelah form configuration -->
+<div class="config-section">
+    <h2>🔄 Auto-Loop System</h2>
+    
+    <div class="form-group">
+        <label>
+            <input type="checkbox" id="autoLoop" checked>
+            🔄 Enable Auto-Loop (Session akan restart otomatis)
+        </label>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="loopInterval">⏱️ Loop Interval (menit):</label>
+            <input type="number" id="loopInterval" min="5" max="240" value="30">
+        </div>
+        
+        <div class="form-group">
+            <label for="maxSessions">📊 Max Sessions:</label>
+            <input type="number" id="maxSessions" min="1" max="50" value="5">
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" onclick="startAutoLoop()">🚀 Start Auto-Loop</button>
+        <button type="button" onclick="stopAutoLoop()">⏹️ Stop Auto-Loop</button>
+        <button type="button" onclick="checkAutoLoopStatus()">🔍 Check Status</button>
+    </div>
+
+    <div id="autoLoopStatus" class="status-display"></div>
+    </div>
+        
 
         <div class="info-section">
             <h3>📋 Fitur yang Akan Dijalankan:</h3>
