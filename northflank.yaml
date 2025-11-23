@@ -1,0 +1,20 @@
+version: "1.0"
+name: bot-traffic
+services:
+  web:
+    image: node:18-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 3000
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+      PUPPETEER_EXECUTABLE_PATH: "/usr/bin/chromium-browser"
+      SESSION_SECRET: change-this-in-production
+      AUTO_LOOP: "true"
+      LOOP_INTERVAL: "1800000"
+      MAX_SESSIONS: "5"
+      DEFAULT_TARGET_URL: https://github.com
