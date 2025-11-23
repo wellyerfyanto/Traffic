@@ -1,0 +1,28 @@
+# render.yaml
+services:
+  - type: web
+    name: bot-traffic-render
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+        value: true
+      - key: PUPPETEER_EXECUTABLE_PATH
+        value: /usr/bin/chromium-browser
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: AUTO_LOOP
+        value: "true"
+      - key: LOOP_INTERVAL
+        value: "1800000"
+      - key: MAX_SESSIONS
+        value: "3"
+      - key: DEFAULT_TARGET_URL
+        value: https://github.com
+    healthCheckPath: /health
+    autoDeploy: true
