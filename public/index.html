@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Traffic Bot - Configuration</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Traffic Bot By Erimo Hack</h1>
+            <p>Automated traffic generator untuk repository GitHub</p>
+        </header>
+
+        <div class="config-section">
+            <h2>⚙️ Konfigurasi Session</h2>
+            <form id="botConfig">
+                <div class="form-group">
+                    <label for="targetUrl">🎯 Target GitHub URL:</label>
+                    <input type="url" id="targetUrl" required 
+                           placeholder="https://github.com/username/repository">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="profiles">👥 Jumlah Profil:</label>
+                        <input type="number" id="profiles" min="1" max="10" value="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="deviceType">📱 Tipe Device:</label>
+                        <select id="deviceType">
+                            <option value="desktop">Desktop</option>
+                            <option value="mobile">Mobile</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="proxies">🔌 Proxy List (satu per baris):</label>
+                    <textarea id="proxies" rows="4" 
+                              placeholder="http://user:pass@host:port&#10;socks5://user:pass@host:port"></textarea>
+                    <small>Opsional: Kosongkan untuk menggunakan IP langsung</small>
+                </div>
+                <!-- Di public/index.html - tambahkan checkbox -->
+                <div class="form-group">
+                     <label>
+                     <input type="checkbox" id="useFreeProxy" checked>
+                     🔄 Gunakan Proxy Gratis Otomatis
+                     </label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" id="startBtn">🚀 Start Sessions</button>
+                    <button type="button" onclick="testPuppeteer()">🧪 Test Puppeteer</button>
+                    <button type="button" onclick="goToMonitoring()">📊 Monitoring</button>
+                </div>
+            </form>
+        </div>
+        <!-- Tambahkan section ini setelah form configuration -->
+<div class="config-section">
+    <h2>🔄 Auto-Loop System</h2>
+    
+    <div class="form-group">
+        <label>
+            <input type="checkbox" id="autoLoop" checked>
+            🔄 Enable Auto-Loop (Session akan restart otomatis)
+        </label>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="loopInterval">⏱️ Loop Interval (menit):</label>
+            <input type="number" id="loopInterval" min="5" max="240" value="30">
+        </div>
+        
+        <div class="form-group">
+            <label for="maxSessions">📊 Max Sessions:</label>
+            <input type="number" id="maxSessions" min="1" max="50" value="5">
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" onclick="startAutoLoop()">🚀 Start Auto-Loop</button>
+        <button type="button" onclick="stopAutoLoop()">⏹️ Stop Auto-Loop</button>
+        <button type="button" onclick="checkAutoLoopStatus()">🔍 Check Status</button>
+    </div>
+
+    <div id="autoLoopStatus" class="status-display"></div>
+    </div>
+        
+
+        <div class="info-section">
+            <h3>📋 Fitur yang Akan Dijalankan:</h3>
+            <ol>
+                <li>✅ Buat profile Google dengan name acak tiap sesion berubah</li>
+                <li>✅ Launch Browser dengan proxy & user agent note sampai dapat proxy yang aktif</li>
+                <li>✅ Navigate ke target URL</li>
+                <li>✅ Human-like scroll simulation</li>
+                <li>✅ Click random link</li>
+                <li>✅ Skip Google ads</li>
+                <li>✅ Continue reading dengan scroll manusia acak tiap sesion sesekali klik menu about tiap sesion ganjil</li>
+                <li>✅ Click random link</li>
+                <li>✅ Klik iklan Google dan kembali dengan durasi 5 detik di halaman iklan dan close iklan</li>
+                <li>✅ Return to home page url</li>
+                <li>✅ Clear cache & dan cooki</li>
+            </ol>
+        </div>
+
+        <div class="status-section">
+            <h3>🔍 Status System</h3>
+            <div id="systemStatus">
+                <p>Loading system status...</p>
+            </div>
+            <!-- Tambahkan proxy status display -->
+            <div id="proxyStatus" style="margin-top: 15px;">
+                <p>Loading proxy status...</p>
+            </div>
+            <div class="proxy-actions" style="margin-top: 10px;">
+                <button onclick="loadProxyInfo()" style="background: #3498db;">🔄 Refresh Proxy Info</button>
+                <button onclick="clearProxies()" style="background: #e74c3c;">🧹 Clear Proxies</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
